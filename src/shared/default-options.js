@@ -1,5 +1,7 @@
 // these are the default options
 const defaultOptions = {
+  outputFormat: "markdown",
+
   headingStyle: "atx",
   hr: "___",
   bulletListMarker: "-",
@@ -33,6 +35,56 @@ const defaultOptions = {
   obsidianIntegration: false,
   obsidianVault: "",
   obsidianFolder: "",
+
+  orgBulletListMarker: "-",
+  orgTodoKeyword: "",
+  orgIncludeProperties: false,
+  orgExportSettings: "",
+  orgPreambleTemplate: "#+TITLE: {pageTitle}\n#+AUTHOR: {byline}\n#+DATE: {date:YYYY-MM-DD}\n#+FILETAGS: {keywords}\n#+SOURCE: {baseURI}",
+  orgImageStyle: "org",
+}
+
+/**
+ * Returns options applicable to each output format.
+ * 
+ * Markdown options:
+ *   headingStyle, hr, bulletListMarker, codeBlockStyle, fence,
+ *   preserveCodeFormatting, emDelimiter, strongDelimiter, linkStyle,
+ *   linkReferenceStyle, imageStyle, imageRefStyle, tableFormatting,
+ *   frontmatter, backmatter, title, turndownEscape
+ * 
+ * Org mode options (used when outputFormat is "org"):
+ *   orgBulletListMarker, orgTodoKeyword, orgIncludeProperties,
+ *   orgExportSettings, orgPreambleTemplate, orgImageStyle
+ * 
+ * Shared options (apply to both formats):
+ *   includeTemplate, saveAs, downloadImages, imagePrefix,
+ *   mdClipsFolder, disallowedChars, downloadMode, contextMenus,
+ *   obsidianIntegration, obsidianVault, obsidianFolder
+ */
+function getFormatSpecificOptions(format) {
+  const markdownOptions = [
+    'headingStyle', 'hr', 'bulletListMarker', 'codeBlockStyle', 'fence',
+    'preserveCodeFormatting', 'emDelimiter', 'strongDelimiter', 'linkStyle',
+    'linkReferenceStyle', 'imageStyle', 'imageRefStyle', 'tableFormatting',
+    'frontmatter', 'backmatter', 'title', 'turndownEscape'
+  ];
+  
+  const orgOptions = [
+    'orgBulletListMarker', 'orgTodoKeyword', 'orgIncludeProperties',
+    'orgExportSettings', 'orgPreambleTemplate', 'orgImageStyle'
+  ];
+  
+  const sharedOptions = [
+    'includeTemplate', 'saveAs', 'downloadImages', 'imagePrefix',
+    'mdClipsFolder', 'disallowedChars', 'downloadMode', 'contextMenus',
+    'obsidianIntegration', 'obsidianVault', 'obsidianFolder'
+  ];
+  
+  if (format === 'org') {
+    return [...orgOptions, ...sharedOptions];
+  }
+  return [...markdownOptions, ...sharedOptions];
 }
 
 // function to get the options from storage and substitute default options if it fails

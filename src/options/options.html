@@ -53,6 +53,14 @@
         </small>
     </details>
 
+    <div class="radio-container" id="outputFormat">
+        <h2>Output Format</h2>
+        <input type="radio" name="outputFormat" id="outputMarkdown" value="markdown" />
+        <label for="outputMarkdown">Markdown</label>
+        <input type="radio" name="outputFormat" id="outputOrg" value="org" />
+        <label for="outputOrg">Org mode</label>
+    </div>
+
     <h3>Title template</h3>
     <div class="textbox-container">
         <label for="title">Template for title/filename</label>
@@ -177,7 +185,8 @@ More information:  <a href="https://vinzent03.github.io/obsidian-advanced-uri/">
 
     <hr>
 
-    <h2>Markdown conversion options</h2>
+    <div id="markdownOptionsSection">
+        <h2>Markdown conversion options</h2>
 
     <div class="radio-container" id="headingStyle">
         <h3>Heading Style</h3>
@@ -365,6 +374,57 @@ const helloWorld = () => {
                 <br />Disabling this option disables this escaping.
             </small></p>
         </label>
+    </div>
+    </div>
+
+    <div id="orgOptionsSection">
+        <h2>Org Mode Options</h2>
+
+        <div class="textbox-container" id="orgPreambleTemplateContainer">
+            <label for="orgPreambleTemplate">Preamble Template (placed at top of file)</label>
+            <div class="input-sizer"><textarea name="orgPreambleTemplate" id="orgPreambleTemplate" class="textarea" role="textbox"></textarea></div>
+        </div>
+
+        <div class="radio-container" id="orgBulletListMarker">
+            <h3>Bullet List Marker</h3>
+            <input type="radio" name="orgBulletListMarker" id="orgBulletDash" value="-" />
+            <label for="orgBulletDash"><code>-</code></label>
+            <input type="radio" name="orgBulletListMarker" id="orgBulletPlus" value="+" />
+            <label for="orgBulletPlus"><code>+</code></label>
+        </div>
+
+        <div class="textbox-container" id="orgTodoKeywordContainer">
+            <label for="orgTodoKeyword">TODO Keyword (e.g., TODO, DONE)</label>
+            <input type="text" name="orgTodoKeyword" role="textbox" placeholder="Leave empty for no TODO keyword" />
+        </div>
+
+        <div class="checkbox-container" id="orgIncludeProperties-container">
+            <input name="orgIncludeProperties" id="orgIncludeProperties" type="checkbox" />
+            <label for="orgIncludeProperties">Include Properties Drawer
+                <p><small>
+                    When enabled, adds a :PROPERTIES: drawer to headings with metadata.
+                </small></p>
+            </label>
+        </div>
+
+        <div class="textbox-container" id="orgExportSettingsContainer">
+            <label for="orgExportSettings">Export Settings (#+OPTIONS line content)</label>
+            <input type="text" name="orgExportSettings" role="textbox" placeholder="e.g., toc:2 num:t author:t" />
+        </div>
+
+        <div class="radio-container" id="orgImageStyle">
+            <h3>Image Style</h3>
+            <input type="radio" name="orgImageStyle" id="orgImageOrg" value="org" />
+            <label for="orgImageOrg">Org link format
+                <pre>[[file:image.png]]</pre>
+            </label>
+            <input type="radio" name="orgImageStyle" id="orgImageLink" value="link" />
+            <label for="orgImageLink">Standard link
+                <pre>[[http://example.com/image.png]]</pre>
+            </label>
+            <input type="radio" name="orgImageStyle" id="orgImageNoImage" value="noImage" />
+            <label for="orgImageNoImage">Strip Images</label>
+        </div>
     </div>
 
     <hr>

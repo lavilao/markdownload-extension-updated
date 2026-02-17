@@ -10,31 +10,31 @@ async function createMenus() {
     try {
       browser.contextMenus.create({
         id: "download-markdown-tab",
-        title: "Download Tab as Markdown",
+        title: "Download Tab",
         contexts: ["tab"]
       }, () => { });
 
       browser.contextMenus.create({
         id: "tab-download-markdown-alltabs",
-        title: "Download All Tabs as Markdown",
+        title: "Download All Tabs",
         contexts: ["tab"]
       }, () => { });
 
       browser.contextMenus.create({
         id: "copy-tab-as-markdown-link-tab",
-        title: "Copy Tab URL as Markdown Link",
+        title: "Copy Tab URL as Link",
         contexts: ["tab"]
       }, () => { });
 
       browser.contextMenus.create({
         id: "copy-tab-as-markdown-link-all-tab",
-        title: "Copy All Tab URLs as Markdown Link List",
+        title: "Copy All Tab URLs as Link List",
         contexts: ["tab"]
       }, () => { });
 
       browser.contextMenus.create({
         id: "copy-tab-as-markdown-link-selected-tab",
-        title: "Copy Selected Tab URLs as Markdown Link List",
+        title: "Copy Selected Tab URLs as Link List",
         contexts: ["tab"]
       }, () => { });
 
@@ -65,7 +65,7 @@ async function createMenus() {
     // add the download all tabs option to the page context menu as well
     browser.contextMenus.create({
       id: "download-markdown-alltabs",
-      title: "Download All Tabs as Markdown",
+      title: "Download All Tabs",
       contexts: ["all"]
     }, () => { });
     browser.contextMenus.create({
@@ -74,15 +74,14 @@ async function createMenus() {
       contexts: ["all"]
     }, () => { });
 
-    // download actions
     browser.contextMenus.create({
       id: "download-markdown-selection",
-      title: "Download Selection As Markdown",
+      title: "Download Selection",
       contexts: ["selection"]
     }, () => { });
     browser.contextMenus.create({
       id: "download-markdown-all",
-      title: "Download Tab As Markdown",
+      title: "Download Tab",
       contexts: ["all"]
     }, () => { });
 
@@ -92,40 +91,39 @@ async function createMenus() {
       contexts: ["all"]
     }, () => { });
 
-    // copy to clipboard actions
     browser.contextMenus.create({
       id: "copy-markdown-selection",
-      title: "Copy Selection As Markdown",
+      title: "Copy Selection",
       contexts: ["selection"]
     }, () => { });
     browser.contextMenus.create({
       id: "copy-markdown-link",
-      title: "Copy Link As Markdown",
+      title: "Copy Link",
       contexts: ["link"]
     }, () => { });
     browser.contextMenus.create({
       id: "copy-markdown-image",
-      title: "Copy Image As Markdown",
+      title: "Copy Image",
       contexts: ["image"]
     }, () => { });
     browser.contextMenus.create({
       id: "copy-markdown-all",
-      title: "Copy Tab As Markdown",
+      title: "Copy Tab",
       contexts: ["all"]
     }, () => { });
     browser.contextMenus.create({
       id: "copy-tab-as-markdown-link",
-      title: "Copy Tab URL as Markdown Link",
+      title: "Copy Tab URL as Link",
       contexts: ["all"]
     }, () => { });
     browser.contextMenus.create({
       id: "copy-tab-as-markdown-link-all",
-      title: "Copy All Tab URLs as Markdown Link List",
+      title: "Copy All Tab URLs as Link List",
       contexts: ["all"]
     }, () => { });
     browser.contextMenus.create({
       id: "copy-tab-as-markdown-link-selected",
-      title: "Copy Selected Tab URLs as Markdown Link List",
+      title: "Copy Selected Tab URLs as Link List",
       contexts: ["all"]
     }, () => { });
   

@@ -6,6 +6,7 @@ const saveOptions = e => {
     e.preventDefault();
 
     options = {
+        outputFormat: getCheckedValue(document.querySelectorAll("input[name='outputFormat']")),
         frontmatter: document.querySelector("[name='frontmatter']").value,
         backmatter: document.querySelector("[name='backmatter']").value,
         title: document.querySelector("[name='title']").value,
@@ -23,7 +24,6 @@ const saveOptions = e => {
 
         preserveCodeFormatting: document.querySelector("[name='preserveCodeFormatting']").checked,
 
-        // Add table formatting options
         tableFormatting: {
             stripLinks: document.querySelector("[name='tableFormatting.stripLinks']").checked,
             stripFormatting: document.querySelector("[name='tableFormatting.stripFormatting']").checked,
@@ -43,6 +43,13 @@ const saveOptions = e => {
         imageStyle: getCheckedValue(document.querySelectorAll("input[name='imageStyle']")),
         imageRefStyle: getCheckedValue(document.querySelectorAll("input[name='imageRefStyle']")),
         downloadMode: getCheckedValue(document.querySelectorAll("input[name='downloadMode']")),
+
+        orgPreambleTemplate: document.querySelector("[name='orgPreambleTemplate']").value,
+        orgBulletListMarker: getCheckedValue(document.querySelectorAll("input[name='orgBulletListMarker']")),
+        orgTodoKeyword: document.querySelector("[name='orgTodoKeyword']").value,
+        orgIncludeProperties: document.querySelector("[name='orgIncludeProperties']").checked,
+        orgExportSettings: document.querySelector("[name='orgExportSettings']").value,
+        orgImageStyle: getCheckedValue(document.querySelectorAll("input[name='orgImageStyle']")),
     }
 
     save();
@@ -167,6 +174,16 @@ const setCurrentChoice = result => {
     setCheckedValue(document.querySelectorAll("[name='imageRefStyle']"), options.imageRefStyle);
     setCheckedValue(document.querySelectorAll("[name='downloadMode']"), options.downloadMode);
 
+    setCheckedValue(document.querySelectorAll("[name='outputFormat']"), options.outputFormat);
+
+    document.querySelector("[name='orgPreambleTemplate']").value = options.orgPreambleTemplate || "";
+    textareaInput.bind(document.querySelector("[name='orgPreambleTemplate']"))();
+    setCheckedValue(document.querySelectorAll("[name='orgBulletListMarker']"), options.orgBulletListMarker || "-");
+    document.querySelector("[name='orgTodoKeyword']").value = options.orgTodoKeyword || "";
+    document.querySelector("[name='orgIncludeProperties']").checked = options.orgIncludeProperties || false;
+    document.querySelector("[name='orgExportSettings']").value = options.orgExportSettings || "";
+    setCheckedValue(document.querySelectorAll("[name='orgImageStyle']"), options.orgImageStyle || "org");
+
     refereshElements();
 }
 
@@ -190,6 +207,12 @@ const show = (el, show) => {
 }
 
 const refereshElements = () => {
+    const isMarkdown = options.outputFormat !== 'org';
+    const isOrg = options.outputFormat === 'org';
+
+    document.getElementById("markdownOptionsSection").style.display = isMarkdown ? "block" : "none";
+    document.getElementById("orgOptionsSection").style.display = isOrg ? "block" : "none";
+
     document.getElementById("downloadModeGroup").querySelectorAll('.radio-container,.checkbox-container,.textbox-container').forEach(container => {
         show(container, options.downloadMode == 'downloadsApi')
     });

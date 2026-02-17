@@ -102,8 +102,10 @@ async function processContent(message) {
       article.content = data.selection;
     }
     
-    // Convert to markdown using passed options
-    const { markdown, imageList } = await convertArticleToMarkdown(article, null, options);
+    // Convert to markdown or org using passed options
+    const result = await convertArticleToMarkdown(article, null, options);
+    const markdown = result.markdown || result.org;
+    const imageList = result.imageList;
     
     // Format title and folder using passed options
     article.title = await formatTitle(article, options);
@@ -165,10 +167,12 @@ async function handleContextMenuDownload(info, tabId, providedOptions = null) {
 
     console.log(`Got article for tab ${tabId}, processing...`);
     const title = await formatTitle(article, options);
-    const { markdown, imageList } = await convertArticleToMarkdown(article, null, options);
+    const result = await convertArticleToMarkdown(article, null, options);
+    const markdown = result.markdown || result.org;
+    const imageList = result.imageList;
     const mdClipsFolder = await formatMdClipsFolder(article, options);
     
-    console.log(`Downloading markdown for tab ${tabId}`);
+    console.log(`Downloading ${options.outputFormat === 'org' ? 'org' : 'markdown'} for tab ${tabId}`);
     await downloadMarkdown(markdown, title, tabId, imageList, mdClipsFolder, options);
     
     // Signal completion
@@ -200,24 +204,35 @@ async function handleContextMenuCopy(info, tabId, providedOptions = null) {
     // Don't call getOptions() - use the passed options
     const localOptions = {...options};
     localOptions.frontmatter = localOptions.backmatter = '';
-    const article = await getArticleFromContent(tabId, false, options);  // Added options
-    const { markdown } = turndown(
-      `<a href="${info.linkUrl}">${info.linkText || info.selectionText}</a>`,
-      { ...localOptions, downloadImages: false },
-      article
-    );
-    await copyToClipboard(markdown);
+    const article = await getArticleFromContent(tabId, false, options);
+    
+    if (options.outputFormat === 'org') {
+      const orgLink = `[[${info.linkUrl}][${info.linkText || info.selectionText}]]`;
+      await copyToClipboard(orgLink);
+    } else {
+      const { markdown } = turndown(
+        `<a href="${info.linkUrl}">${info.linkText || info.selectionText}</a>`,
+        { ...localOptions, downloadImages: false },
+        article
+      );
+      await copyToClipboard(markdown);
+    }
   }
   else if (info.menuItemId === "copy-markdown-image") {
-    await copyToClipboard(`![](${info.srcUrl})`);
+    if (options.outputFormat === 'org') {
+      await copyToClipboard(`[[${info.srcUrl}]]`);
+    } else {
+      await copyToClipboard(`![](${info.srcUrl})`);
+    }
   }
   else if (info.menuItemId === "copy-markdown-obsidian") {
-    const article = await getArticleFromContent(tabId, true, options);  // Added options
+    const article = await getArticleFromContent(tabId, true, options);
     const title = article.title;
     // Don't call getOptions()
     const obsidianVault = options.obsidianVault;
     const obsidianFolder = await formatObsidianFolder(article, options);
-    const { markdown } = await convertArticleToMarkdown(article, false, options);
+    const result = await convertArticleToMarkdown(article, false, options);
+    const markdown = result.markdown || result.org;
 
     console.log('[Offscreen] Sending markdown to service worker for Obsidian integration...');
     // Offscreen document can't access clipboard, send to service worker to handle
@@ -231,12 +246,13 @@ async function handleContextMenuCopy(info, tabId, providedOptions = null) {
     });
   }
   else if (info.menuItemId === "copy-markdown-obsall") {
-    const article = await getArticleFromContent(tabId, false, options);  // Added options
+    const article = await getArticleFromContent(tabId, false, options);
     const title = article.title;
     // Don't call getOptions()
     const obsidianVault = options.obsidianVault;
     const obsidianFolder = await formatObsidianFolder(article, options);
-    const { markdown } = await convertArticleToMarkdown(article, false, options);
+    const result = await convertArticleToMarkdown(article, false, options);
+    const markdown = result.markdown || result.org;
 
     console.log('[Offscreen] Sending markdown to service worker for Obsidian integration...');
     // Offscreen document can't access clipboard, send to service worker to handle
@@ -250,8 +266,9 @@ async function handleContextMenuCopy(info, tabId, providedOptions = null) {
     });
   }
   else {
-    const article = await getArticleFromContent(tabId, info.menuItemId === "copy-markdown-selection", options);  // Added options
-    const { markdown } = await convertArticleToMarkdown(article, false, options);
+    const article = await getArticleFromContent(tabId, info.menuItemId === "copy-markdown-selection", options);
+    const result = await convertArticleToMarkdown(article, false, options);
+    const markdown = result.markdown || result.org;
     await copyToClipboard(markdown);
   }
 }
@@ -312,7 +329,15 @@ async function convertArticleToMarkdown(article, downloadImages = null, provided
     options.downloadImages = downloadImages;
   }
 
-  // Substitute front and backmatter templates if necessary
+  options.imagePrefix = textReplace(options.imagePrefix, article, options.disallowedChars)
+    .split('/').map(s => generateValidFileName(s, options.disallowedChars)).join('/');
+
+  // Check if output format is Org mode
+  if (options.outputFormat === 'org') {
+    return convertArticleToOrg(article, options);
+  }
+
+  // Substitute front and backmatter templates if necessary (Markdown only)
   if (options.includeTemplate) {
     options.frontmatter = textReplace(options.frontmatter, article) + '\n';
     options.backmatter = '\n' + textReplace(options.backmatter, article);
@@ -321,15 +346,33 @@ async function convertArticleToMarkdown(article, downloadImages = null, provided
     options.frontmatter = options.backmatter = '';
   }
 
-  options.imagePrefix = textReplace(options.imagePrefix, article, options.disallowedChars)
-    .split('/').map(s => generateValidFileName(s, options.disallowedChars)).join('/');
-
   let result = turndown(article.content, options, article);
   if (options.downloadImages && options.downloadMode === 'downloadsApi') {
     // Pre-download the images
     result = await preDownloadImages(result.imageList, result.markdown);
   }
   return result;
+}
+
+/**
+ * Convert article to Org mode format
+ */
+async function convertArticleToOrg(article, options) {
+  let orgPreamble = '';
+  
+  if (options.includeTemplate && options.orgPreambleTemplate) {
+    orgPreamble = textReplace(options.orgPreambleTemplate, article) + '\n\n';
+  }
+
+  let result = orgdown(article.content, options, article);
+  result.org = orgPreamble + result.org;
+
+  if (options.downloadImages && options.downloadMode === 'downloadsApi') {
+    result = await preDownloadImages(result.imageList, result.org);
+    return { org: result.markdown, imageList: result.imageList };
+  }
+  
+  return { org: result.org, imageList: result.imageList };
 }
 
 function processCodeBlock(node, options) {
@@ -845,6 +888,132 @@ function turndown(content, options, article) {
 }
 
 /**
+ * Convert HTML to Org mode format using OrgDown
+ */
+function orgdown(content, options, article) {
+  console.log("Starting orgdown conversion");
+
+  const orgOptions = {
+    bulletListMarker: options.orgBulletListMarker || '-',
+    todoKeyword: options.orgTodoKeyword || '',
+    includeProperties: options.orgIncludeProperties || false,
+    exportSettings: !!options.orgExportSettings,
+    hr: '-----',
+    br: '\\\\',
+    codeBlockStyle: 'src',
+    preformattedCode: false
+  };
+
+  const orgdownService = new OrgDown(orgOptions);
+
+  let imageList = {};
+
+  // Add custom image rule to handle image downloading and styling
+  orgdownService.addRule('customImages', {
+    filter: function(node) {
+      return node.nodeName === 'IMG' && node.getAttribute('src');
+    },
+    replacement: function(content, node) {
+      let src = node.getAttribute('src');
+      src = validateUri(src, article.baseURI);
+
+      if (options.downloadImages) {
+        let imageFilename = getImageFilename(src, options, false);
+        if (!imageList[src] || imageList[src] !== imageFilename) {
+          let i = 1;
+          while (Object.values(imageList).includes(imageFilename)) {
+            const parts = imageFilename.split('.');
+            if (i === 1) parts.splice(parts.length - 1, 0, i++);
+            else parts.splice(parts.length - 2, 1, i++);
+            imageFilename = parts.join('.');
+          }
+          imageList[src] = imageFilename;
+        }
+
+        const orgImageStyle = options.orgImageStyle || 'org';
+        if (orgImageStyle !== 'originalSource') {
+          const localSrc = imageFilename.split('/').map(s => encodeURI(s)).join('/');
+          src = localSrc;
+        }
+      }
+
+      const alt = cleanAttribute(node.getAttribute('alt')) || '';
+      
+      if (options.orgImageStyle === 'noImage') {
+        return '';
+      }
+      
+      if (alt) {
+        return '\n\n[[' + src + '][' + alt + ']]\n\n';
+      }
+      return '\n\n[[' + src + ']]\n\n';
+    }
+  });
+
+  // Add custom link rule to handle links properly with base URI
+  orgdownService.addRule('customLinks', {
+    filter: function(node) {
+      return node.nodeName === 'A' && node.getAttribute('href');
+    },
+    replacement: function(content, node) {
+      let href = validateUri(node.getAttribute('href'), article.baseURI);
+      const title = cleanAttribute(node.getAttribute('title'));
+      
+      if (!content) {
+        content = href;
+      }
+      if (title) {
+        content = content + ' (' + title + ')';
+      }
+      return '[[' + href + '][' + content + ']]';
+    }
+  });
+
+  // Add rule for code blocks with language detection
+  orgdownService.addRule('fencedCodeBlock', {
+    filter: function(node) {
+      return (
+        node.nodeName === 'PRE' &&
+        node.firstChild &&
+        node.firstChild.nodeName === 'CODE'
+      );
+    },
+    replacement: function(content, node) {
+      const codeNode = node.firstChild;
+      const processedCode = processCodeBlock(codeNode, options);
+      const language = processedCode.language || '';
+      const code = processedCode.code;
+
+      if (language) {
+        return '\n\n#+BEGIN_SRC ' + language + '\n' + code + '\n#+END_SRC\n\n';
+      }
+      return '\n\n#+BEGIN_EXAMPLE\n' + code + '\n#+END_EXAMPLE\n\n';
+    }
+  });
+
+  // Add rule for pre elements without code
+  orgdownService.addRule('preExample', {
+    filter: function(node) {
+      return node.nodeName === 'PRE' && (!node.firstChild || node.firstChild.nodeName !== 'CODE');
+    },
+    replacement: function(content, node) {
+      const code = node.textContent;
+      return '\n\n#+BEGIN_EXAMPLE\n' + code.replace(/\n$/, '') + '\n#+END_EXAMPLE\n\n';
+    }
+  });
+
+  // Keep certain elements as HTML if needed
+  orgdownService.keep(['iframe', 'sub', 'sup', 'u', 'ins', 'del', 'small', 'big']);
+
+  let org = orgdownService.orgdown(content);
+
+  // strip out non-printing special characters
+  org = org.replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028\u2029\ufeff\ufff9-\ufffc]/g, '');
+
+  return { org: org, imageList: imageList };
+}
+
+/**
 * Get article from DOM string
 */
 async function getArticleFromDom(domString, options) {
@@ -1285,12 +1454,14 @@ async function preDownloadImages(imageList, markdown, providedOptions = null) {
 }
 
 /**
-* Download Markdown file
-*/
+ * Download Markdown file
+ */
 async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsFolder = '', providedOptions = null) {
   const options = providedOptions || defaultOptions;
+  const fileExtension = options.outputFormat === 'org' ? 'org' : 'md';
+  const mimeType = options.outputFormat === 'org' ? 'text/org;charset=utf-8' : 'text/markdown;charset=utf-8';
   
-  console.log(`📁 [Offscreen] Downloading markdown: title="${title}", folder="${mdClipsFolder}", saveAs=${options.saveAs}`);
+  console.log(`📁 [Offscreen] Downloading ${fileExtension}: title="${title}", folder="${mdClipsFolder}", saveAs=${options.saveAs}`);
   console.log(`🔧 [Offscreen] Download mode: ${options.downloadMode}, browser.downloads available: ${!!browser.downloads}`);
  
  // Check if Downloads API is available in offscreen context
@@ -1302,12 +1473,12 @@ async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsF
    
    try {
      // Create blob for markdown content
-     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+     const blob = new Blob([markdown], { type: mimeType });
      const url = URL.createObjectURL(blob);
      
      if(mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
      
-     const fullFilename = mdClipsFolder + title + ".md";
+     const fullFilename = mdClipsFolder + title + "." + fileExtension;
      
      console.log(`🚀 [Offscreen] Starting Downloads API download: URL=${url}, filename="${fullFilename}"`);
      
@@ -1364,17 +1535,17 @@ async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsF
        error: err.message
      });
    }
- } else if (options.downloadMode === 'downloadsApi') {
-   // Downloads API requested but not available in offscreen - create blob and delegate to service worker
-   console.log(`🔄 [Offscreen] Downloads API not available in offscreen, creating blob and delegating to service worker`);
-   
-   try {
-     // Create blob URL in offscreen document (has DOM access)
-     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
-     const url = URL.createObjectURL(blob);
-     
-     if(mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
-     const fullFilename = mdClipsFolder + title + ".md";
+  } else if (options.downloadMode === 'downloadsApi') {
+    // Downloads API requested but not available in offscreen - create blob and delegate to service worker
+    console.log(`🔄 [Offscreen] Downloads API not available in offscreen, creating blob and delegating to service worker`);
+    
+    try {
+      // Create blob URL in offscreen document (has DOM access)
+      const blob = new Blob([markdown], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      
+      if(mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
+      const fullFilename = mdClipsFolder + title + "." + fileExtension;
      
      console.log(`🎯 [Offscreen] Created blob URL: ${url}, delegating to service worker`);
      
@@ -1403,16 +1574,18 @@ async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsF
  * Download via content script method (fallback when Downloads API not available)
  */
 async function downloadViaContentScript(markdown, title, tabId, imageList, mdClipsFolder, options) {
+  const fileExtension = options.outputFormat === 'org' ? 'org' : 'md';
+  
   try {
     // For content script downloads, we need to handle the subfolder differently
     // since data URI downloads don't support subfolders
     let filename;
     if (mdClipsFolder) {
       // Flatten the path by including folder in filename
-      filename = `${mdClipsFolder.replace(/\//g, '_')}${generateValidFileName(title, options.disallowedChars)}.md`;
+      filename = `${mdClipsFolder.replace(/\//g, '_')}${generateValidFileName(title, options.disallowedChars)}.${fileExtension}`;
       console.log(`🔗 [Offscreen] Flattening subfolder path: "${mdClipsFolder}" + "${title}" -> "${filename}"`);
     } else {
-      filename = generateValidFileName(title, options.disallowedChars) + ".md";
+      filename = generateValidFileName(title, options.disallowedChars) + "." + fileExtension;
     }
     
     const base64Content = base64EncodeUnicode(markdown);

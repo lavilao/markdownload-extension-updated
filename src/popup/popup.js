@@ -163,7 +163,8 @@ async function activateLinkPicker(e) {
 const defaultOptions = {
     includeTemplate: false,
     clipSelection: true,
-    downloadImages: false
+    downloadImages: false,
+    outputFormat: 'markdown'
 }
 
 // Function to parse markdown links
@@ -375,6 +376,37 @@ const checkInitialSettings = options => {
         document.querySelector("#document").classList.add("active");
         document.querySelector("#selected").classList.remove("active");
     }
+
+    // Set format selector state
+    if (options.outputFormat === 'org') {
+        document.querySelector("#formatOrg").classList.add("active");
+        document.querySelector("#formatMarkdown").classList.remove("active");
+    } else {
+        document.querySelector("#formatMarkdown").classList.add("active");
+        document.querySelector("#formatOrg").classList.remove("active");
+    }
+    updatePreviewLabel(options.outputFormat);
+}
+
+const updatePreviewLabel = format => {
+    const label = document.querySelector(".editor-label");
+    if (label) {
+        label.textContent = format === 'org' ? 'Org Mode Preview' : 'Markdown Preview';
+    }
+    const subtitle = document.querySelector(".app-subtitle");
+    if (subtitle) {
+        subtitle.textContent = format === 'org' ? 'Convert to Org Mode' : 'Convert to Markdown';
+    }
+}
+
+const toggleOutputFormat = options => {
+    options.outputFormat = options.outputFormat === 'org' ? 'markdown' : 'org';
+    document.querySelector("#formatMarkdown").classList.toggle("active");
+    document.querySelector("#formatOrg").classList.toggle("active");
+    updatePreviewLabel(options.outputFormat);
+    browser.storage.sync.set(options).then(() => clipSite()).catch((error) => {
+        console.error(error);
+    });
 }
 
 const toggleClipSelection = options => {
@@ -493,6 +525,18 @@ browser.storage.sync.get(defaultOptions).then(options => {
         e.preventDefault();
         toggleClipSelection(options);
     });
+    document.getElementById("formatMarkdown").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!document.querySelector("#formatMarkdown").classList.contains("active")) {
+            toggleOutputFormat(options);
+        }
+    });
+    document.getElementById("formatOrg").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!document.querySelector("#formatOrg").classList.contains("active")) {
+            toggleOutputFormat(options);
+        }
+    });
     document.getElementById("includeTemplate").addEventListener("click", () => {
         toggleIncludeTemplate(options);
     });
@@ -578,23 +622,23 @@ function handleLinkPickerComplete(links) {
 }
 
 //function to send the download message to the background page
-function sendDownloadMessage(text) {
+async function sendDownloadMessage(text) {
     if (text != null) {
-
-        return browser.tabs.query({
+        const options = await browser.storage.sync.get(defaultOptions);
+        const tabs = await browser.tabs.query({
             currentWindow: true,
             active: true
-        }).then(tabs => {
-            var message = {
-                type: "download",
-                markdown: text,
-                title: document.getElementById("title").value,
-                tab: tabs[0],
-                imageList: imageList,
-                mdClipsFolder: mdClipsFolder
-            };
-            return browser.runtime.sendMessage(message);
         });
+        var message = {
+            type: "download",
+            markdown: text,
+            title: document.getElementById("title").value,
+            tab: tabs[0],
+            imageList: imageList,
+            mdClipsFolder: mdClipsFolder,
+            outputFormat: options.outputFormat || 'markdown'
+        };
+        return browser.runtime.sendMessage(message);
     }
 }
 
@@ -744,7 +788,8 @@ async function sendToObsidian(e) {
             tabId: currentTab.id,
             vault: options.obsidianVault || '',
             folder: options.obsidianFolder || '',
-            title: title
+            title: title,
+            outputFormat: options.outputFormat || 'markdown'
         });
 
         // Show success state
@@ -791,6 +836,14 @@ function notify(message) {
         document.getElementById("title").value = message.article.title;
         imageList = message.imageList;
         mdClipsFolder = message.mdClipsFolder;
+        
+        // Update subtitle based on format
+        browser.storage.sync.get(defaultOptions).then(options => {
+            const subtitle = document.querySelector(".app-subtitle");
+            if (subtitle) {
+                subtitle.textContent = options.outputFormat === 'org' ? 'Convert to Org Mode' : 'Convert to Markdown';
+            }
+        });
         
         // show the hidden elements
         document.getElementById("container").style.display = 'flex';
