@@ -1542,7 +1542,9 @@ async function handleDownloadDirectly(markdown, title, tabId, imageList = {}, md
       
       if (mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
       
-      const fullFilename = mdClipsFolder + title + fileExt;
+      // Sanitize the title to ensure valid filename
+      const sanitizedTitle = generateValidFileName(title, options.disallowedChars);
+      const fullFilename = mdClipsFolder + sanitizedTitle + fileExt;
       
       console.log(`🎯 [Service Worker] Starting Downloads API: URL=${url}, filename="${fullFilename}"`);
       
@@ -1666,7 +1668,9 @@ async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsF
       
       if (mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
       
-      const fullFilename = mdClipsFolder + title + fileExt;
+      // Sanitize the title to ensure valid filename
+      const sanitizedTitle = generateValidFileName(title, options.disallowedChars);
+      const fullFilename = mdClipsFolder + sanitizedTitle + fileExt;
       
       console.log(`🚀 [Service Worker] Starting Downloads API download: URL=${url}, filename="${fullFilename}"`);
       

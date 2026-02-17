@@ -1471,16 +1471,18 @@ async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsF
    // Downloads API is available in offscreen - use it directly
    const downloadsAPI = browser.downloads || chrome.downloads;
    
-   try {
-     // Create blob for markdown content
-     const blob = new Blob([markdown], { type: mimeType });
-     const url = URL.createObjectURL(blob);
-     
-     if(mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
-     
-     const fullFilename = mdClipsFolder + title + "." + fileExtension;
-     
-     console.log(`🚀 [Offscreen] Starting Downloads API download: URL=${url}, filename="${fullFilename}"`);
+    try {
+      // Create blob for markdown content
+      const blob = new Blob([markdown], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      
+      if(mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
+      
+      // Sanitize the title to ensure valid filename
+      const sanitizedTitle = generateValidFileName(title, options.disallowedChars);
+      const fullFilename = mdClipsFolder + sanitizedTitle + "." + fileExtension;
+      
+      console.log(`🚀 [Offscreen] Starting Downloads API download: URL=${url}, filename="${fullFilename}"`);
      
      // CRITICAL: Notify service worker to track this URL BEFORE starting download
      await browser.runtime.sendMessage({
@@ -1545,9 +1547,12 @@ async function downloadMarkdown(markdown, title, tabId, imageList = {}, mdClipsF
       const url = URL.createObjectURL(blob);
       
       if(mdClipsFolder && !mdClipsFolder.endsWith('/')) mdClipsFolder += '/';
-      const fullFilename = mdClipsFolder + title + "." + fileExtension;
-     
-     console.log(`🎯 [Offscreen] Created blob URL: ${url}, delegating to service worker`);
+      
+      // Sanitize the title to ensure valid filename
+      const sanitizedTitle = generateValidFileName(title, options.disallowedChars);
+      const fullFilename = mdClipsFolder + sanitizedTitle + "." + fileExtension;
+      
+      console.log(`🎯 [Offscreen] Created blob URL: ${url}, delegating to service worker`);
      
      // Send blob URL to service worker for Downloads API
      await browser.runtime.sendMessage({
