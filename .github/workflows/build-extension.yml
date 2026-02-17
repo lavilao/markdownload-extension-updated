@@ -35,7 +35,7 @@ jobs:
       - name: Get version from manifest
         id: version
         run: |
-          VERSION=$(cat src/manifest.json | grep '"version"' | head -1 | sed 's/.*: *"\\([^"]*\\)".*/\\1/')
+          VERSION=$(grep '"version"' src/manifest.json | head -1 | cut -d'"' -f4)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Rename artifact
